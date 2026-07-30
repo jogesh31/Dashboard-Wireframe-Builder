@@ -9,7 +9,7 @@
   position: relative;
   z-index: 200;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
 }
 
 #menu-bar {
