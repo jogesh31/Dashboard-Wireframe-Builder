@@ -159,29 +159,36 @@ textarea { resize: vertical; min-height: 50px; }
   position: fixed;
   background: #000;
   color: #fff;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
-  z-index: 99999;
+  z-index: 1999;
   pointer-events: none;
-  opacity: 0.96;
+  opacity: 0.95;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  delay: 0.3s;
 }
-/* For toolbar buttons, position tooltip above */
+/* For toolbar buttons: position tooltip WELL above, away from dropdown */
 #top-toolbar [data-tip]:hover::after,
-#menu-bar [data-tip]:hover::after,
-.sidebar-collapse-btn[data-tip]:hover::after {
+#menu-bar [data-tip]:hover::after {
+  top: -40px;
   bottom: auto;
-  top: 20px;
   left: 50%;
   transform: translateX(-50%);
 }
+/* For sidebar buttons: position to the right */
+.sidebar-collapse-btn[data-tip]:hover::after {
+  top: 50%;
+  transform: translateY(-50%);
+  right: -140px;
+  left: auto;
+}
 /* For other elements (panels, canvas), position below */
-[data-tip]:not(#top-toolbar [data-tip]):not(#menu-bar [data-tip]):hover::after {
+[data-tip]:not(#top-toolbar [data-tip]):not(#menu-bar [data-tip]):not(.sidebar-collapse-btn[data-tip]):hover::after {
   top: auto;
-  bottom: -32px;
+  bottom: -40px;
   left: 50%;
   transform: translateX(-50%);
 }
