@@ -1,0 +1,68 @@
+:root {
+  --bg-app: #1c1d21;
+  --bg-toolbar: #202127;
+  --bg-panel: #242529;
+  --bg-panel-alt: #2b2c32;
+  --bg-panel-hover: #323339;
+  --bg-input: #1a1b1f;
+  --border-color: #38393f;
+  --border-color-soft: #2f3036;
+  --text-primary: #ececed;
+  --text-secondary: #9a9ba3;
+  --text-tertiary: #6b6c74;
+  --accent: #6366f1;
+  --accent-hover: #7c7ff5;
+  --accent-soft: rgba(99, 102, 241, 0.18);
+  --accent-contrast: #ffffff;
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.15);
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --canvas-bg: #16171a;
+  --page-bg: #ffffff;
+  --grid-line: rgba(0, 0, 0, 0.06);
+  --grid-line-strong: rgba(0, 0, 0, 0.12);
+  --guide-color: #ff3b8f;
+  --selection-color: #6366f1;
+  --ruler-bg: #202127;
+  --ruler-text: #7a7b82;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --font-ui: -apple-system, "Segoe UI", "Inter", Roboto, Helvetica, Arial, sans-serif;
+  --topbar-h: 46px;
+  --menubar-h: 34px;
+  --statusbar-h: 28px;
+  --left-w: 268px;
+  --right-w: 300px;
+  --ruler-size: 20px;
+  --tab-h: 34px;
+}
+
+/* Light mode — only recolors the app chrome (toolbar/sidebars/panels/modals).
+   The page canvas itself stays a white "sheet" regardless, same as most design tools. */
+:root[data-theme="light"] {
+  --bg-app: #eef0f3;
+  --bg-toolbar: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-panel-alt: #f2f3f6;
+  --bg-panel-hover: #e7e9ee;
+  --bg-input: #ffffff;
+  --border-color: #dcdfe4;
+  --border-color-soft: #e9ebef;
+  --text-primary: #20222b;
+  --text-secondary: #6b6e78;
+  --text-tertiary: #9a9da6;
+  --accent-soft: rgba(99, 102, 241, 0.1);
+  --danger-soft: rgba(239, 68, 68, 0.08);
+  --success: #16a34a;
+  --canvas-bg: #d9dce2;
+  --grid-line: rgba(0, 0, 0, 0.05);
+  --grid-line-strong: rgba(0, 0, 0, 0.1);
+  --ruler-bg: #ffffff;
+  --ruler-text: #8a8d95;
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.14);
+}

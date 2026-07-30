@@ -1,0 +1,173 @@
+/* ---- Pages panel ---- */
+#pages-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+}
+#pages-panel-header .title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.page-list {
+  padding: 4px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.page-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel-alt);
+  cursor: pointer;
+  position: relative;
+  padding: 6px;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.page-thumb:hover { transform: translateY(-1px); }
+.page-thumb.active { border-color: var(--accent); }
+.page-thumb:hover .page-thumb-actions { opacity: 1; }
+.page-thumb.dragging { opacity: 0.4; }
+.page-thumb.drop-before { box-shadow: 0 -3px 0 0 var(--accent); }
+.page-thumb.drop-after { box-shadow: 0 3px 0 0 var(--accent); }
+
+.page-thumb-canvas {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #fff;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+.page-thumb-stage {
+  position: relative;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  pointer-events: none;
+}
+.page-thumb-canvas .thumb-el {
+  pointer-events: none;
+}
+
+.page-thumb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 5px;
+  gap: 4px;
+}
+.page-thumb-name {
+  font-size: 11.5px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.page-thumb-name[contenteditable="true"] {
+  background: var(--bg-input);
+  outline: 1px solid var(--accent);
+}
+.page-thumb-index {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  width: 16px;
+}
+.page-thumb-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+.page-thumb-actions .icon-btn { width: 22px; height: 22px; }
+.page-thumb-actions .icon-btn svg { width: 13px; height: 13px; }
+
+.add-page-btn {
+  margin: 4px 10px 10px;
+  width: calc(100% - 20px);
+  justify-content: center;
+}
+
+/* ---- Visual library panel ---- */
+#library-search {
+  padding: 10px 12px 6px;
+}
+.library-categories {
+  padding-bottom: 14px;
+}
+.lib-category {
+  border-bottom: 1px solid var(--border-color-soft);
+}
+.lib-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.lib-category-header:hover { color: var(--text-primary); }
+.lib-category-header .chev { transition: transform 0.15s; color: var(--text-tertiary); }
+.lib-category.collapsed .chev { transform: rotate(-90deg); }
+.lib-category-header .count { margin-left: auto; color: var(--text-tertiary); font-weight: 400; }
+
+.lib-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 4px 12px 14px;
+}
+.lib-category.collapsed .lib-grid { display: none; }
+
+.lib-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 4px 7px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: grab;
+  text-align: center;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.lib-item:hover {
+  background: var(--bg-panel-hover);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.lib-item:hover .lib-item-icon { color: var(--accent); }
+.lib-item:active { cursor: grabbing; transform: translateY(0); }
+.lib-item .lib-item-icon {
+  width: 38px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+}
+.lib-item .lib-item-icon svg { width: 100%; height: 100%; }
+.lib-item .lib-item-label {
+  font-size: 10.5px;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.lib-item.dragging-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.85;
+  width: 96px;
+}
+
+.lib-empty {
+  padding: 20px 14px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}

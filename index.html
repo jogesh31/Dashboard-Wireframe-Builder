@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard Wireframe Designer</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><rect x=%2220%22 y=%2255%22 width=%2214%22 height=%2225%22 fill=%22white%22/><rect x=%2240%22 y=%2235%22 width=%2214%22 height=%2245%22 fill=%22white%22/><rect x=%2260%22 y=%2220%22 width=%2214%22 height=%2260%22 fill=%22white%22/></svg>" />
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("wfd-theme");
+    if (!t) t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+})();
+</script>
+<link rel="stylesheet" href="styles/variables.css" />
+<link rel="stylesheet" href="styles/base.css" />
+<link rel="stylesheet" href="styles/components.css" />
+<link rel="stylesheet" href="styles/layout.css" />
+<link rel="stylesheet" href="styles/toolbar.css" />
+<link rel="stylesheet" href="styles/sidebar.css" />
+<link rel="stylesheet" href="styles/canvas.css" />
+<link rel="stylesheet" href="styles/panels.css" />
+<link rel="stylesheet" href="styles/visuals.css" />
+</head>
+<body>
+<div id="app">
+
+  <header id="top-toolbar"></header>
+  <nav id="menu-bar"></nav>
+
+  <div id="body-grid">
+    <aside id="left-sidebar">
+      <div class="tabs" id="left-tabs">
+        <div class="tab active" data-tab="pages">Pages</div>
+        <div class="tab" data-tab="library">Visuals</div>
+      </div>
+      <div class="left-sidebar-content">
+        <div id="pages-panel" class="panel-scroll"></div>
+        <div id="library-panel" class="panel-scroll hidden"></div>
+      </div>
+    </aside>
+
+    <div id="left-resize-handle" class="sidebar-resize-handle">
+      <button id="left-collapse-btn" class="sidebar-collapse-btn" data-tip="Hide panel">‹</button>
+    </div>
+
+    <main id="canvas-area">
+      <div id="canvas-toolstrip"></div>
+      <div id="canvas-viewport-wrap">
+        <div id="ruler-corner"></div>
+        <div id="ruler-h"></div>
+        <div id="ruler-v"></div>
+        <div id="canvas-scroll">
+          <div id="canvas-scroll-inner">
+            <div id="page-canvas-wrap">
+              <div id="page-canvas">
+                <div id="elements-layer"></div>
+                <svg id="guides-svg"></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="marquee-box" class="hidden"></div>
+      </div>
+    </main>
+
+    <div id="right-resize-handle" class="sidebar-resize-handle">
+      <button id="right-collapse-btn" class="sidebar-collapse-btn" data-tip="Hide panel">›</button>
+    </div>
+
+    <aside id="right-sidebar">
+      <div class="tabs" id="right-tabs">
+        <div class="tab active" data-tab="properties">Properties</div>
+        <div class="tab" data-tab="layers">Layers</div>
+        <div class="tab" data-tab="comments">Comments</div>
+        <div class="tab" data-tab="schema">Schema</div>
+      </div>
+      <div class="right-sidebar-content">
+        <div id="properties-panel" class="panel-scroll"></div>
+        <div id="layers-panel" class="panel-scroll hidden"></div>
+        <div id="comments-panel" class="panel-scroll hidden"></div>
+        <div id="schema-panel" class="panel-scroll hidden"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="status-bar"></footer>
+</div>
+
+<div id="toast-host"></div>
+<div id="modal-host"></div>
+<input type="file" id="file-input-schema" accept=".csv,.xlsx,.xls,.json" class="hidden" />
+<input type="file" id="file-input-project" accept=".json,.wfd" class="hidden" />
+<input type="file" id="file-input-image" accept="image/*" class="hidden" />
+
+<script src="vendor/papaparse.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
