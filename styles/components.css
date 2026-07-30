@@ -149,23 +149,41 @@ textarea { resize: vertical; min-height: 50px; }
 .menu-sep { height: 1px; background: var(--border-color); margin: 4px 2px; }
 .menu-item input[type="checkbox"] { margin: 0; }
 
-/* Tooltip */
-[data-tip] { position: relative; }
+/* Tooltip — escapes overflow by using fixed positioning */
+[data-tip] {
+  position: relative;
+  overflow: visible !important;
+}
 [data-tip]:hover::after {
   content: attr(data-tip);
-  position: absolute;
-  bottom: -26px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background: #000;
   color: #fff;
-  padding: 3px 7px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;
+  font-weight: 500;
   white-space: nowrap;
-  z-index: 2000;
+  z-index: 99999;
   pointer-events: none;
-  opacity: 0.92;
+  opacity: 0.96;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+/* For toolbar buttons, position tooltip above */
+#top-toolbar [data-tip]:hover::after,
+#menu-bar [data-tip]:hover::after,
+.sidebar-collapse-btn[data-tip]:hover::after {
+  bottom: auto;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+/* For other elements (panels, canvas), position below */
+[data-tip]:not(#top-toolbar [data-tip]):not(#menu-bar [data-tip]):hover::after {
+  top: auto;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* Modal */
