@@ -6,6 +6,22 @@ import { h, escapeHtml, clamp } from "../utils/dom.js";
 
 let panelEl;
 
+// Matches Power BI Desktop's built-in "Page view" > "Page size" presets, so a
+// stakeholder who's used Power BI recognizes the same names/dimensions.
+const PAGE_SIZE_PRESETS = [
+  { name: "16:9", w: 1280, h: 720 },
+  { name: "4:3", w: 960, h: 720 },
+  { name: "Cortana", w: 400, h: 600 },
+  { name: "Letter", w: 816, h: 1056 },
+  { name: "Tooltip", w: 320, h: 240 },
+  { name: "Custom", w: null, h: null },
+];
+
+function matchPagePreset(w, h) {
+  const preset = PAGE_SIZE_PRESETS.find((p) => p.w === w && p.h === h);
+  return preset ? preset.name : "Custom";
+}
+
 const FONT_OPTIONS = ["Segoe UI", "Arial", "Georgia", "Verdana", "Courier New", "Tahoma", "Trebuchet MS"];
 const FIELD_LABELS = {
   title: "Title", subtitle: "Subtitle", value: "Value", category: "Category / Field",
@@ -13,16 +29,36 @@ const FIELD_LABELS = {
   text: "Text", rows: "Rows (label: value per line)",
 };
 
+const FIELD_DATALIST_ID = "properties-field-suggestions";
+// content keys that represent a bound data-field name, not a free-form label
+const SCHEMA_SUGGEST_FIELDS = new Set(["category", "axisX", "axisY", "value", "legend"]);
+
+// Same idea as the Generate modal's field suggestions: a plain text input
+// with schema column names as autocomplete suggestions (grouped by table via
+// the `label` attribute), never forcing the value — you can still type
+// anything. Used for fields like a filter's "Category / Field" name.
+function buildFieldDatalist() {
+  const datalist = h("datalist", { id: FIELD_DATALIST_ID });
+  store.doc.schema.tables.forEach((table) => {
+    table.columns.forEach((col) => {
+      datalist.appendChild(h("option", { value: col.name, label: table.name }));
+    });
+  });
+  return datalist;
+}
+
 export function initPropertiesPanel() {
   panelEl = document.getElementById("properties-panel");
   store.on("selection:change", render);
   store.on("elements:change", render);
   store.on("page:switch", render);
+  store.on("schema:change", render);
   render();
 }
 
 function render() {
   panelEl.innerHTML = "";
+  panelEl.appendChild(buildFieldDatalist());
   const selected = store.getSelectedElements();
 
   if (!selected.length) {
@@ -62,11 +98,23 @@ function renderHeader(selected) {
 
 function renderPageSettings() {
   const page = store.getCurrentPage();
+  const { width, height } = store.doc.canvas;
+  const currentPreset = matchPagePreset(width, height);
   return section("Page Settings", [
     field("Page Name", input({
       type: "text", value: page.name,
       onChange: (v) => store.renamePage(page.id, v),
     })),
+    field("Page Size", selectInput(
+      PAGE_SIZE_PRESETS.map((p) => ({ v: p.name, l: p.w ? `${p.name} (${p.w}×${p.h})` : p.name })),
+      currentPreset,
+      (name) => {
+        const preset = PAGE_SIZE_PRESETS.find((p) => p.name === name);
+        if (preset && preset.w) store.setCanvasSize(preset.w, preset.h);
+        // "Custom" needs no action here — the Width/Height fields below stay
+        // at their current values and become the editable source of truth.
+      }
+    )),
     row([
       field("Canvas Width", numberInput(store.doc.canvas.width, (v) => store.setCanvasSize(v, store.doc.canvas.height))),
       field("Canvas Height", numberInput(store.doc.canvas.height, (v) => store.setCanvasSize(store.doc.canvas.width, v))),
@@ -202,21 +250,74 @@ function renderVisualProperties(el) {
     const label = FIELD_LABELS[key] || key;
     const value = el.content?.[key] ?? "";
     const isLong = key === "notes" || key === "rows" || key === "text";
+    // Fields that conceptually hold a data-field name (a filter's bound
+    // column, a chart's axis/category/value/legend) get schema suggestions;
+    // free-form labels like title/subtitle/notes don't.
+    const isFieldName = SCHEMA_SUGGEST_FIELDS.has(key);
     const control = isLong
       ? textareaInput(value, (v) => store.updateElementContent(el.id, { [key]: v }))
-      : input({ type: "text", value, onChange: (v) => store.updateElementContent(el.id, { [key]: v }) });
+      : input({ type: "text", value, list: isFieldName ? FIELD_DATALIST_ID : undefined, onChange: (v) => store.updateElementContent(el.id, { [key]: v }) });
     return field(label, control);
   });
 
   if (family === "table") {
-    inputs.push(field("Columns (comma separated)", input({
-      type: "text",
-      value: (el.content.linkedColumns || []).join(", "),
-      onChange: (v) => store.updateElementContent(el.id, { linkedColumns: v.split(",").map((s) => s.trim()).filter(Boolean) }),
-    })));
+    inputs.push(...renderTableSchemaBinding(el));
   }
 
   return section("Visual Properties", inputs);
+}
+
+// Lets a table/matrix visual show real column headers from an uploaded
+// schema table, instead of always falling back to "Column A, B, C, D".
+// Falls back to a free-text comma list when no schema table is linked (or
+// none has been uploaded yet), preserving the previous manual-entry behavior.
+function renderTableSchemaBinding(el) {
+  const tables = store.doc.schema.tables;
+  const linkedTable = el.content.linkedTable || "";
+  const schemaTable = tables.find((t) => t.name === linkedTable);
+
+  const tableOptions = [{ v: "", l: "None (manual columns)" }, ...tables.map((t) => ({ v: t.name, l: t.name }))];
+  const tableSelect = field("Data Table", selectInput(tableOptions, schemaTable ? linkedTable : "", (v) => {
+    if (!v) {
+      store.updateElementContent(el.id, { linkedTable: "" });
+      return;
+    }
+    const t = tables.find((tt) => tt.name === v);
+    // Selecting a table starts with every column checked, matching what the
+    // Schema panel's "Insert as Table" shortcut does.
+    store.updateElementContent(el.id, { linkedTable: v, linkedColumns: t.columns.map((c) => c.name) });
+  }));
+
+  if (!schemaTable) {
+    return [
+      tableSelect,
+      field("Columns (comma separated)", input({
+        type: "text",
+        value: (el.content.linkedColumns || []).join(", "),
+        onChange: (v) => store.updateElementContent(el.id, { linkedColumns: v.split(",").map((s) => s.trim()).filter(Boolean) }),
+      })),
+    ];
+  }
+
+  const selectedCols = new Set(el.content.linkedColumns || []);
+  const checkboxList = h("div", { class: "stack", style: "gap:4px;max-height:180px;overflow-y:auto" });
+  schemaTable.columns.forEach((col) => {
+    const cb = h("input", { type: "checkbox" });
+    cb.checked = selectedCols.has(col.name);
+    cb.addEventListener("change", () => {
+      const next = new Set(el.content.linkedColumns || []);
+      if (cb.checked) next.add(col.name); else next.delete(col.name);
+      store.updateElementContent(el.id, { linkedColumns: [...next] });
+    });
+    const row = h("label", { class: "menu-item", style: "padding:4px 0;cursor:pointer" }, [
+      cb,
+      h("span", { style: "margin-left:6px" }, col.name),
+      h("span", { class: "shortcut" }, col.type),
+    ]);
+    checkboxList.appendChild(row);
+  });
+
+  return [tableSelect, field(`Columns (${selectedCols.size} of ${schemaTable.columns.length} shown)`, checkboxList)];
 }
 
 // ---------------- small form helpers ----------------
@@ -227,8 +328,8 @@ function row(children) {
   return h("div", { class: "grid2" }, children);
 }
 
-function input({ type, value, onChange }) {
-  const el = h("input", { type, value });
+function input({ type, value, list, onChange }) {
+  const el = h("input", { type, value, list });
   el.addEventListener("change", () => onChange(el.value));
   el.addEventListener("keydown", (e) => e.stopPropagation());
   return el;

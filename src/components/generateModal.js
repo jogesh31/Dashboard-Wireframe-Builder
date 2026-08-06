@@ -40,7 +40,7 @@ function render() {
       <h3>Generate visuals</h3>
       <button class="icon-btn" data-action="close">${UI.close}</button>
     </div>
-    <p class="generate-subtitle">Add a row per visual, pick its type and (optionally) its title — remove any you don't need — then generate the whole set at once, auto-arranged as a clean grid.</p>
+    <p class="generate-subtitle">Add a row per visual, pick its type and (optionally) its title — remove any you don't need — then generate the whole set at once, auto-arranged as a clean grid. Type any name you like, or pick a field from your uploaded schema.</p>
     <div class="generate-sections" id="generate-sections"></div>
     <div class="modal-actions" style="justify-content:space-between;align-items:center">
       <span class="generate-total" id="generate-total"></span>
@@ -52,6 +52,8 @@ function render() {
   `;
   modal.querySelector('[data-action="close"]').addEventListener("click", close);
   modal.querySelector('[data-action="cancel"]').addEventListener("click", close);
+
+  modal.appendChild(buildFieldDatalist());
 
   const sectionsWrap = modal.querySelector("#generate-sections");
   const groups = groupedCatalog();
@@ -79,6 +81,25 @@ function render() {
       showToast("Pick at least one visual first", "error");
     }
   });
+}
+
+const FIELD_DATALIST_ID = "generate-field-suggestions";
+
+// A single shared <datalist>, built from every column in every uploaded
+// schema table. Each name input references it via `list=`, so typing still
+// works exactly as free text (nothing is forced) while suggestions show up
+// grouped by table — the `label` attribute renders as the table name next
+// to the column name in browsers that support it (Firefox shows it inline;
+// Chrome shows it as secondary text), degrading gracefully to a plain
+// suggestion list elsewhere. No schema uploaded means an empty, harmless list.
+function buildFieldDatalist() {
+  const datalist = h("datalist", { id: FIELD_DATALIST_ID });
+  store.doc.schema.tables.forEach((table) => {
+    table.columns.forEach((col) => {
+      datalist.appendChild(h("option", { value: col.name, label: table.name }));
+    });
+  });
+  return datalist;
 }
 
 function buildSection(section, groups, updateTotal) {
@@ -115,7 +136,7 @@ function buildSection(section, groups, updateTotal) {
       const select = buildSelect(section, groups, rowState.type);
       select.addEventListener("change", () => { state[section.key][idx].type = select.value; });
 
-      const labelInput = h("input", { type: "text", class: "gr-label-input", placeholder: section.placeholder, value: rowState.label });
+      const labelInput = h("input", { type: "text", class: "gr-label-input", placeholder: section.placeholder, value: rowState.label, list: FIELD_DATALIST_ID, autocomplete: "off" });
       labelInput.addEventListener("input", () => { state[section.key][idx].label = labelInput.value; });
 
       const delBtn = h("button", { class: "gr-del-btn", type: "button", "data-tip": "Remove this row", html: UI.close });
