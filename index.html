@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Dashboard Wireframe Designer</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; object-src 'none'; base-uri 'none'" />
+<title>Wireframe Designer</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%236366f1%22/><rect x=%2220%22 y=%2255%22 width=%2214%22 height=%2225%22 fill=%22white%22/><rect x=%2240%22 y=%2235%22 width=%2214%22 height=%2245%22 fill=%22white%22/><rect x=%2260%22 y=%2220%22 width=%2214%22 height=%2260%22 fill=%22white%22/></svg>" />
 <script>
 (function () {
@@ -47,6 +48,7 @@
     </div>
 
     <main id="canvas-area">
+      <div id="sync-banner"></div>
       <div id="canvas-toolstrip"></div>
       <div id="canvas-viewport-wrap">
         <div id="ruler-corner"></div>
@@ -92,7 +94,7 @@
 <div id="toast-host"></div>
 <div id="modal-host"></div>
 <input type="file" id="file-input-schema" accept=".csv,.xlsx,.xls,.json" class="hidden" />
-<input type="file" id="file-input-project" accept=".json,.wfd" class="hidden" />
+<input type="file" id="file-input-project" accept=".wfd,.json" class="hidden" />
 <input type="file" id="file-input-image" accept="image/*" class="hidden" />
 
 <script src="vendor/papaparse.min.js"></script>

@@ -3,6 +3,14 @@ import { renderElementBody, elementEditableFieldSelector } from "../visualRender
 import { snapValue, computeAlignmentGuides, bounds } from "../utils/geometry.js";
 import { escapeHtml } from "../utils/dom.js";
 import { getVisualDef } from "../visualLibrary.js";
+import { getHighlight } from "../wfd/projectFile.js";
+import { isOpen } from "../wfd/comments.js";
+import { openVisualTypePicker, SWITCHABLE_FAMILIES } from "./visualTypePicker.js";
+import { openSpecModal, specState, showSpecPreview, hideSpecPreview } from "./specModal.js";
+
+let specHoverTimer = null;
+
+const TYPE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 20V11M10 20V5M15 20v-7M20 20V8"/></svg>`;
 
 const LOCK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>`;
 const COMMENT_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3c-5 0-9 3.4-9 7.5 0 2.3 1.2 4.3 3.2 5.7-.1 1-.5 2.1-1.2 3 1.5-.2 2.8-.8 3.8-1.5 1 .3 2 .5 3.2.5 5 0 9-3.4 9-7.5S17 3 12 3Z"/></svg>`;
@@ -27,6 +35,8 @@ export function createElementNode(el) {
   node.id = `el-${el.id}`;
   node.dataset.id = el.id;
   node.dataset.type = el.type;
+  const highlight = getHighlight(el.id);
+  if (highlight) node.classList.add(`remote-${highlight}`);
   applyTransform(node, el);
 
   const inner = document.createElement("div");
@@ -80,13 +90,41 @@ function elOverlayFragment(el) {
     frag.appendChild(lockBadge);
   }
 
+  if (SWITCHABLE_FAMILIES.has(getVisualDef(el.type)?.family)) {
+    const typeBtn = document.createElement("button");
+    typeBtn.className = "el-type-btn";
+    typeBtn.dataset.role = "type-switch";
+    typeBtn.setAttribute("data-tip", "Change visual type");
+    typeBtn.setAttribute("aria-label", "Change visual type");
+    typeBtn.innerHTML = `${TYPE_ICON}<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>`;
+    frag.appendChild(typeBtn);
+  }
+
+  if (SWITCHABLE_FAMILIES.has(getVisualDef(el.type)?.family)) {
+    const state = specState(el);
+    const specBtn = document.createElement("button");
+    specBtn.className = `el-spec-btn spec-${state}`;
+    specBtn.dataset.role = "spec";
+    // Empty: a plain tooltip. With content, hovering shows the full preview card instead.
+    if (state === "none") specBtn.setAttribute("data-tip", "Add logic and description");
+    specBtn.setAttribute("aria-label", state === "none" ? "Add logic and description" : "Logic and description");
+    specBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5v16h4M15 4h4v16h-4"/><path d="M9 12h6"/></svg><span>fx</span>`;
+    frag.appendChild(specBtn);
+  }
+
   const hasComments = el.comments && el.comments.length;
   const badge = document.createElement("div");
   badge.className = `comment-badge${hasComments ? "" : " empty"}`;
   badge.dataset.role = "comment-badge";
   if (hasComments) {
-    const unresolved = el.comments.filter((c) => !c.resolved).length;
-    badge.textContent = String(unresolved || el.comments.length);
+    const open = el.comments.filter(isOpen).length;
+    // (hovering shows the comments themselves, so no tooltip here)
+    if (open) {
+      badge.textContent = String(open);
+    } else {
+      badge.textContent = "✓";
+      badge.classList.add("all-done");
+    }
   } else {
     badge.innerHTML = COMMENT_ICON;
     badge.setAttribute("data-tip", "Add comment");
@@ -118,6 +156,37 @@ export function applyTransform(node, el) {
 function attachHandlers(node, el) {
   node.addEventListener("pointerdown", (e) => onElementPointerDown(e, node, el));
   node.addEventListener("dblclick", (e) => onElementDoubleClick(e, node, el));
+
+  const typeBtn = node.querySelector('[data-role="type-switch"]');
+  if (typeBtn) {
+    typeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    typeBtn.addEventListener("dblclick", (e) => e.stopPropagation());
+    typeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!store.selection.includes(el.id) || store.selection.length !== 1) store.setSelection([el.id]);
+      // Selecting may redraw the visual, so look the button up again for positioning.
+      const anchor = document.querySelector(`#el-${CSS.escape(el.id)} [data-role="type-switch"]`) || typeBtn;
+      openVisualTypePicker(el.id, anchor);
+    });
+  }
+
+  const specBtn = node.querySelector('[data-role="spec"]');
+  if (specBtn) {
+    specBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    specBtn.addEventListener("dblclick", (e) => e.stopPropagation());
+    specBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clearTimeout(specHoverTimer);
+      hideSpecPreview();
+      store.setSelection([el.id]);
+      openSpecModal(el.id);
+    });
+    specBtn.addEventListener("mouseenter", () => {
+      clearTimeout(specHoverTimer);
+      specHoverTimer = setTimeout(() => { if (specBtn.isConnected) showSpecPreview(el.id, specBtn); }, 250);
+    });
+    specBtn.addEventListener("mouseleave", () => { clearTimeout(specHoverTimer); hideSpecPreview(); });
+  }
 
   const commentBadge = node.querySelector('[data-role="comment-badge"]');
   if (commentBadge) {

@@ -74,13 +74,16 @@
   display: inline-flex;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 120px;
+  padding: 40px;
   box-sizing: border-box;
 }
 
+/* margin:auto centres the page in whatever space is free (side panels shown
+   or hidden), but never pushes it off-screen when it's bigger than the view. */
 #page-canvas-wrap {
   position: relative;
   flex-shrink: 0;
+  margin: auto;
 }
 
 #page-canvas {
@@ -219,6 +222,63 @@
   transition: transform 0.12s, opacity 0.12s;
 }
 .comment-badge:hover { transform: scale(1.15); }
+
+/* "Change visual type" button, shown on hover / selection next to the comment badge */
+.el-type-btn {
+  position: absolute;
+  top: -11px;
+  right: 16px;
+  height: 20px;
+  padding: 0 4px 0 5px;
+  display: flex; align-items: center; gap: 1px;
+  border-radius: 10px;
+  border: 1.5px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  cursor: pointer;
+  z-index: 6;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.el-type-btn svg { width: 12px; height: 12px; }
+.el-type-btn svg.chev { width: 9px; height: 9px; }
+.el:hover > .el-type-btn,
+.el.selected:not(.multi) > .el-type-btn { opacity: 1; pointer-events: auto; }
+.el-type-btn:hover { background: var(--accent); color: #fff; }
+.el.editing-text > .el-type-btn,
+body.exporting .el-type-btn { display: none; }
+
+/* "Logic & description" button — grey when empty, amber draft, blue confirmed, green built */
+.el-spec-btn {
+  position: absolute;
+  top: -11px;
+  right: 62px;
+  height: 20px;
+  padding: 0 6px 0 5px;
+  display: flex; align-items: center; gap: 2px;
+  border-radius: 10px;
+  border: 1.5px solid #8a8886;
+  background: #fff;
+  color: #605e5c;
+  font: 700 10px/1 "Segoe UI", sans-serif;
+  cursor: pointer;
+  z-index: 6;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  transition: opacity 0.12s;
+}
+.el-spec-btn svg { width: 11px; height: 11px; }
+.el-spec-btn.spec-none { opacity: 0; pointer-events: none; }
+.el:hover > .el-spec-btn.spec-none,
+.el.selected:not(.multi) > .el-spec-btn.spec-none { opacity: 1; pointer-events: auto; }
+.el-spec-btn.spec-draft { border-color: #d9a400; color: #8a6400; background: #fff8e1; }
+.el-spec-btn.spec-confirmed { border-color: #118dff; color: #0a5fb0; background: #e8f3ff; }
+.el-spec-btn.spec-built { border-color: #1aab40; color: #11722b; background: #e6f6ec; }
+.el-spec-btn:hover { filter: brightness(0.95); }
+.el.editing-text > .el-spec-btn,
+body.exporting .el-spec-btn { display: none; }
+.comment-badge.all-done { background: #e6f6ec; color: var(--success); border-color: var(--success); font-size: 11px; }
 .comment-badge.empty {
   background: #fff;
   color: var(--accent);
@@ -252,8 +312,13 @@
   outline: 1px dashed var(--accent);
 }
 
-/* Group outline */
-.el.is-group > .el-select-outline { border-style: dotted; }
+/* Someone else's changes, highlighted until "Mark as seen" */
+.el.remote-added { outline: 2px solid var(--success); outline-offset: 3px; }
+.el.remote-modified { outline: 2px solid var(--warning); outline-offset: 3px; }
+.el.remote-commented { outline: 2px dashed var(--accent); outline-offset: 3px; }
+
+/* Grouped visuals don't get a selection outline of their own */
+.el.is-group > .el-select-outline { display: none; }
 
 /* Handles / label tag only visible on single-element selection */
 .el:not(.selected) .resize-handle,
@@ -265,6 +330,7 @@
 }
 
 /* Export mode: strip editor chrome from the captured page */
+body.exporting .el { outline: none !important; }
 body.exporting .el-select-outline,
 body.exporting .el-hover-outline,
 body.exporting .resize-handle,
@@ -308,6 +374,7 @@ body.exporting.hide-comments .comment-badge {
   border-top: 1px dashed #e2c96e;
 }
 .export-sticky-note .esn-author { font-weight: 600; }
+.export-sticky-note .esn-tags { font-size: 9px; font-weight: 600; color: #8a6d1a; margin-bottom: 1px; }
 .export-sticky-note .esn-more { margin-top: 5px; font-size: 9.5px; color: #8a7638; font-style: italic; }
 
 /* Zoom-fit helper */

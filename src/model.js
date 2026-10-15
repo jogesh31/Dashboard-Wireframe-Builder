@@ -18,6 +18,7 @@ export function createEmptyDocument(title = "Untitled Wireframe") {
     pages: [page],
     currentPageId: page.id,
     schema: { tables: [] },
+    members: [], // everyone who has opened the project: { id: email, email, name, addedAt }
     settings: {
       zoom: 1,
       showGrid: true,
@@ -44,7 +45,7 @@ export function nextZIndex(page) {
 
 const BASE_STYLE = {
   background: "#ffffff",
-  borderColor: "#c7cad1",
+  borderColor: "#e1dfdd",
   borderWidth: 1,
   borderStyle: "solid",
   borderRadius: 4,
@@ -53,7 +54,7 @@ const BASE_STYLE = {
   fontSize: 13,
   fontWeight: "400",
   textAlign: "left",
-  color: "#20222b",
+  color: "#252423",
   shadow: "none",
 };
 

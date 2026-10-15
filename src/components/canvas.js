@@ -46,6 +46,7 @@ export function initCanvas() {
 
   applyCanvasSize();
   renderElementsLayer();
+  setupAutoFit();
   setTimeout(() => fitToScreen(), 30);
 }
 
@@ -130,7 +131,14 @@ export function applyCanvasSize() {
 
 // ---------------- zoom ----------------
 
+// Fit-to-screen stays "on" until the user zooms by hand: while it's on, the
+// page re-fits whenever the canvas area changes size (side panels hidden or
+// shown, window resized) and whenever a project is opened.
+let autoFit = true;
+const FIT_PADDING = 40;
+
 export function setZoom(z, opts = {}) {
+  if (!opts.fromFit) autoFit = false;
   const prevZoom = getZoom();
   store.setZoom(z);
   applyCanvasSize();
@@ -160,20 +168,34 @@ export function zoomReset() {
 }
 
 export function fitToScreen() {
+  if (!els.scroll.clientWidth) return; // not laid out yet
   const { width, height } = store.doc.canvas;
-  const vw = els.scroll.clientWidth - 100;
-  const vh = els.scroll.clientHeight - 100;
+  const vw = els.scroll.clientWidth - FIT_PADDING * 2 - 2;
+  const vh = els.scroll.clientHeight - FIT_PADDING * 2 - 2;
   const scale = Math.max(0.1, Math.min(vw / width, vh / height, 2));
-  setZoom(scale);
+  setZoom(Math.floor(scale * 1000) / 1000, { fromFit: true });
+  autoFit = true;
   centerCanvas();
 }
 
 function centerCanvas() {
   setTimeout(() => {
     const scroll = els.scroll;
-    scroll.scrollLeft = (scroll.scrollWidth - scroll.clientWidth) / 2;
-    scroll.scrollTop = (scroll.scrollHeight - scroll.clientHeight) / 2;
-  }, 30);
+    scroll.scrollLeft = Math.max(0, (scroll.scrollWidth - scroll.clientWidth) / 2);
+    scroll.scrollTop = 0;
+  }, 0);
+}
+
+function setupAutoFit() {
+  let pending = null;
+  const refit = () => {
+    if (!autoFit) return;
+    clearTimeout(pending);
+    pending = setTimeout(() => fitToScreen(), 30);
+  };
+  new ResizeObserver(refit).observe(els.scroll);
+  // Opening / switching projects: fit the new project instead of restoring its saved zoom.
+  window.addEventListener("wfd:project-opened", () => { autoFit = true; refit(); });
 }
 
 function setupWheelZoom() {
@@ -473,7 +495,12 @@ function downscaleImageBlob(blob) {
         const canvasEl = document.createElement("canvas");
         canvasEl.width = width;
         canvasEl.height = height;
-        canvasEl.getContext("2d").drawImage(img, 0, 0, width, height);
+        const ctx = canvasEl.getContext("2d");
+        // JPEG has no transparency: without this, a transparent PNG (a logo,
+        // an icon) would come out on a black background.
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
         resolve({
           dataUrl: canvasEl.toDataURL("image/jpeg", 0.88),
           naturalWidth: img.naturalWidth,

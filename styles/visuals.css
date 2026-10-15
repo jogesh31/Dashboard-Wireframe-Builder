@@ -1,3 +1,114 @@
+/* ===================== Power BI-style visuals (src/pbiVisuals.js) ===================== */
+.pbi-visual {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif;
+  color: #252423;
+}
+.pbi-header { flex-shrink: 0; padding: 8px 10px 0; box-sizing: border-box; overflow: hidden; text-align: var(--el-align, left); }
+.pbi-title {
+  font-size: var(--el-title-size, 13px);
+  line-height: 1.35;
+  color: var(--el-color, #252423);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  outline: none;
+}
+.pbi-subtitle { font-size: 11px; line-height: 15px; color: #605E5C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none; }
+.pbi-body { flex: 1; min-height: 0; position: relative; }
+.pbi-svg { display: block; width: 100%; height: 100%; }
+
+/* Card: big callout value, category label underneath (Power BI "Card") */
+.pbi-card { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; text-align: center; }
+.pbi-callout { color: var(--el-color, #252423); line-height: 1.1; letter-spacing: -0.01em; outline: none; font-family: "DIN", "Segoe UI Semibold", "Segoe UI", sans-serif; }
+.pbi-category { font-size: 12px; color: #605E5C; margin-top: 4px; outline: none; }
+
+/* KPI: value, goal/status, faint trend area behind */
+.pbi-kpi { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; text-align: center; overflow: hidden; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; }
+.pbi-kpi-trend { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; }
+.pbi-kpi-trend .pbi-svg { height: auto; }
+.pbi-kpi > *:not(.pbi-kpi-trend) { position: relative; }
+.pbi-kpi-title { font-size: 12px; color: #605E5C; font-weight: 600; outline: none; }
+.pbi-kpi-goal { display: flex; align-items: center; gap: 4px; font-size: 11.5px; margin-top: 3px; outline: none; }
+.pbi-kpi-goal.pos { color: #1AAB40; }
+.pbi-kpi-goal.neg { color: #D64554; }
+.pbi-kpi-icon { width: 14px; height: 14px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; background: currentColor; }
+.pbi-kpi-goal.pos .pbi-kpi-icon::before, .pbi-kpi-goal.neg .pbi-kpi-icon::before { content: ""; }
+.pbi-kpi-icon { color: #fff; }
+.pbi-kpi-goal.pos .pbi-kpi-icon { background: #1AAB40; }
+.pbi-kpi-goal.neg .pbi-kpi-icon { background: #D64554; }
+.pbi-kpi-sub { font-size: 10.5px; color: #605E5C; outline: none; }
+
+/* Multi-row card */
+.pbi-multirow { width: 100%; height: 100%; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; }
+.pbi-mr-title { font-size: 12px; font-weight: 600; color: var(--el-color, #252423); outline: none; }
+.pbi-mr-row { border-left: 3px solid #118DFF; padding: 1px 0 1px 8px; }
+.pbi-mr-value { font-size: var(--el-title-size, 16px); font-weight: 600; color: #252423; line-height: 1.2; font-family: "DIN", "Segoe UI Semibold", "Segoe UI", sans-serif; }
+.pbi-mr-label { font-size: 10.5px; color: #605E5C; }
+
+/* Gauge */
+.pbi-gauge-body { display: flex; align-items: flex-end; justify-content: center; }
+.pbi-gauge-body .pbi-svg { position: absolute; inset: 0; }
+.pbi-gauge-value { position: relative; margin-bottom: 8%; color: var(--el-color, #252423); outline: none; font-family: "DIN", "Segoe UI Semibold", "Segoe UI", sans-serif; }
+
+/* Bullet */
+.pbi-bullet { width: 100%; height: 100%; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; gap: 5px; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; }
+.pbi-bullet-track { position: relative; height: 18px; }
+.pbi-bullet-band { position: absolute; top: 0; bottom: 0; left: 0; }
+.pbi-bullet-band.b3 { width: 100%; background: #F3F2F1; }
+.pbi-bullet-band.b2 { width: 75%; background: #E1DFDD; }
+.pbi-bullet-band.b1 { width: 45%; background: #C8C6C4; }
+.pbi-bullet-fill { position: absolute; left: 0; top: 6px; bottom: 6px; background: #118DFF; }
+.pbi-bullet-target { position: absolute; top: 1px; bottom: 1px; width: 2px; background: #252423; }
+.pbi-bullet-scale { display: flex; justify-content: space-between; font-size: 9px; color: #605E5C; }
+
+/* Key influencers */
+.pbi-influencers { width: 100%; height: 100%; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; }
+.pbi-infl-tabs { display: flex; gap: 12px; font-size: 11px; color: #605E5C; border-bottom: 1px solid #E1DFDD; }
+.pbi-infl-tabs span { padding-bottom: 3px; }
+.pbi-infl-tabs .active { color: #252423; border-bottom: 2px solid #118DFF; font-weight: 600; }
+.pbi-infl-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #252423; }
+.pbi-infl-bubble { min-width: 34px; height: 22px; border-radius: 11px; background: #118DFF; color: #fff; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+.pbi-infl-text b { font-weight: 600; }
+
+.pbi-infographic { width: 100%; height: 100%; padding: 10px; display: flex; align-items: center; gap: 10px; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; }
+.pbi-ig-icon { width: 40px; height: 40px; flex-shrink: 0; color: #118DFF; background: #E6F3FF; border-radius: 8px; padding: 8px; }
+.pbi-ig-icon svg { width: 100%; height: 100%; }
+
+/* Table / matrix (Power BI "Default" table style) */
+.pbi-table-wrap { overflow: hidden; padding: 4px 10px 6px; }
+.pbi-table { width: 100%; border-collapse: collapse; font-size: 11px; color: #252423; table-layout: fixed; }
+.pbi-table th { font-weight: 600; text-align: left; padding: 4px 6px; border-bottom: 1px solid #C8C6C4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pbi-table td { padding: 3px 6px; height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+.pbi-table tbody tr:nth-child(even) td { background: #F3F2F1; }
+.pbi-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.pbi-table .pbi-total td { font-weight: 700; border-top: 1px solid #252423; }
+.pbi-table.matrix th { border-bottom: 1px solid #252423; }
+.pbi-expand { display: inline-flex; align-items: center; justify-content: center; width: 10px; height: 10px; border: 1px solid #8A8886; font-size: 9px; line-height: 1; margin-right: 6px; color: #605E5C; vertical-align: -1px; }
+
+/* Slicers */
+.pbi-slicer { width: 100%; height: 100%; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; font-family: var(--el-font, "Segoe UI"), "Segoe UI", sans-serif; }
+.pbi-slicer-header { display: flex; align-items: center; justify-content: space-between; font-size: var(--el-title-size, 13px); font-weight: 600; color: var(--el-color, #252423); flex-shrink: 0; }
+.pbi-slicer-header [data-field] { outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pbi-slicer-eraser { font-size: 11px; color: #A19F9D; font-weight: 400; }
+.pbi-slicer-body { display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.pbi-slicer-item { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: #252423; height: 20px; flex-shrink: 0; white-space: nowrap; overflow: hidden; }
+.pbi-slicer-item.child { padding-left: 30px; }
+.pbi-chev { width: 10px; color: #605E5C; font-size: 11px; text-align: center; }
+.pbi-check { width: 12px; height: 12px; border: 1px solid #605E5C; flex-shrink: 0; position: relative; background: #fff; }
+.pbi-check.on { background: #252423; border-color: #252423; }
+.pbi-check.on::after { content: ""; position: absolute; left: 3px; top: 0px; width: 3px; height: 7px; border: solid #fff; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.pbi-check.partial::after { content: ""; position: absolute; left: 2px; top: 2px; right: 2px; bottom: 2px; background: #252423; }
+.pbi-slicer-dropdown { display: flex; align-items: center; justify-content: space-between; border: 1px solid #8A8886; padding: 4px 8px; font-size: 11.5px; color: #252423; background: #fff; }
+.pbi-range-boxes { display: flex; gap: 8px; }
+.pbi-range-box { flex: 1; border: 1px solid #8A8886; padding: 3px 6px; font-size: 11px; color: #252423; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; background: #fff; }
+.pbi-cal { color: #605E5C; font-size: 10px; }
+.pbi-slider { position: relative; height: 16px; margin: 4px 6px 0; }
+.pbi-slider-track { position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: #C8C6C4; }
+.pbi-slider-range { position: absolute; top: 7px; height: 2px; background: #252423; }
+.pbi-slider-handle { position: absolute; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 1px solid #252423; transform: translateX(-50%); }
+
+/* ===================== older generic styles ===================== */
 .viz-card {
   width: 100%; height: 100%;
   display: flex; flex-direction: column;

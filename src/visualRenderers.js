@@ -1,6 +1,7 @@
 import { escapeHtml } from "./utils/dom.js";
 import { buildGlyph } from "./visualIcons.js";
 import { getVisualDef } from "./visualLibrary.js";
+import { renderPbiChart, renderPbiCard, renderPbiTable, renderPbiMap, renderPbiSlicer } from "./pbiVisuals.js";
 
 const RADIAL_KINDS = new Set(["pie", "donut", "sunburst", "treemap", "funnel", "sankey", "chord", "network", "wordcloud", "icongrid", "smallmultiples", "calendar"]);
 
@@ -168,10 +169,15 @@ function renderText(el) {
   return `<div class="text-content" data-field="text" contenteditable="false">${escapeHtml(c.text ?? "")}</div>`;
 }
 
+// Pasted images are always embedded data: URLs. Anything else in a project
+// file (a web link, javascript:, a broken value) is ignored rather than
+// loaded — files come from other people, so they're treated as untrusted.
+const SAFE_IMAGE_SRC = /^data:image\/(png|jpe?g|gif|webp|bmp);base64,[a-z0-9+/=\s]+$/i;
+
 function renderImage(el, def) {
   const c = el.content || {};
-  if (c.imageSrc) {
-    return `<img class="pasted-image" src="${c.imageSrc}" alt="${escapeHtml(c.imageLabel || "Pasted image")}" draggable="false" />`;
+  if (c.imageSrc && SAFE_IMAGE_SRC.test(c.imageSrc)) {
+    return `<img class="pasted-image" src="${escapeHtml(c.imageSrc)}" alt="${escapeHtml(c.imageLabel || "Pasted image")}" draggable="false" />`;
   }
   const label = def.type === "logo" ? "Logo" : c.imageLabel || "Image placeholder";
   return `<div class="image-placeholder">${buildGlyph(def.type === "logo" ? "logo" : "image", el.id)}<div class="ip-label">${escapeHtml(label)}</div></div>`;
@@ -208,15 +214,15 @@ export function renderElementBody(el) {
   const def = getVisualDef(el.type) || { family: el.family, iconKind: el.family };
   switch (def.family || el.family) {
     case "chart":
-      return renderChart(el, def);
+      return renderPbiChart(el, def);
     case "cardstat":
-      return renderCardStat(el, def);
+      return renderPbiCard(el, def);
     case "table":
-      return renderTable(el, def);
+      return renderPbiTable(el, def);
     case "map":
-      return renderMap(el, def);
+      return renderPbiMap(el, def);
     case "filter":
-      return renderFilter(el, def);
+      return renderPbiSlicer(el, def);
     case "text":
       return renderText(el);
     case "image":
@@ -232,7 +238,7 @@ export function renderElementBody(el) {
     case "groupContainer":
       return renderGroupContainer(el);
     default:
-      return renderChart(el, def);
+      return renderPbiChart(el, def);
   }
 }
 

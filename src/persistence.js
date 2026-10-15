@@ -190,6 +190,48 @@ export async function clearLinkedFileHandle(projectId) {
   } catch (err) { /* ignore */ }
 }
 
+// ---------------- last-seen snapshot of a project file ----------------
+// The shared content as this user last saw it, kept only on this computer, so
+// reopening a project can highlight what other people changed in between.
+
+export async function saveSeenSnapshot(projectId, content) {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await reqToPromise(tx(db, META_STORE, "readwrite").put(content, `seen:${projectId}`));
+  } catch (err) { /* ignore — only affects change highlighting */ }
+}
+
+export async function loadSeenSnapshot(projectId) {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    return (await reqToPromise(tx(db, META_STORE, "readonly").get(`seen:${projectId}`))) || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+// ---------------- small key/value settings ----------------
+
+export async function getMetaValue(key) {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    return (await reqToPromise(tx(db, META_STORE, "readonly").get(key))) ?? null;
+  } catch (err) {
+    return null;
+  }
+}
+
+export async function putMetaValue(key, value) {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await reqToPromise(tx(db, META_STORE, "readwrite").put(value, key));
+  } catch (err) { /* ignore */ }
+}
+
 // ---------------- legacy single-slot migration ----------------
 
 async function loadLegacyDocument() {

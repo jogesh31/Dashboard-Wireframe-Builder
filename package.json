@@ -1,0 +1,52 @@
+{
+  "name": "wireframe-designer",
+  "productName": "Wireframe Designer",
+  "version": "1.0.0",
+  "description": "Dashboard wireframe designer with shared .wfd project files",
+  "author": "Jogesh Kumar",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.acc.wireframedesigner",
+    "productName": "Wireframe Designer",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "index.html",
+      "src/**/*",
+      "styles/**/*",
+      "vendor/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "wfd",
+        "name": "WireframeDesigner.Project",
+        "description": "Wireframe Project",
+        "role": "Editor"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Wireframe Designer"
+    }
+  }
+}

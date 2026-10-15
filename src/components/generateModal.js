@@ -4,13 +4,24 @@ import { h } from "../utils/dom.js";
 import { groupedCatalog } from "../visualLibrary.js";
 import { showToast } from "./toast.js";
 import { fitToScreen } from "./canvas.js";
+import { planGenerateLayout, generateStartY, parsePattern, rowSizes } from "../generateLayout.js";
 
 // Order requested: Headers first, then Filters, then KPIs, then Visuals.
 const SECTIONS = [
-  { key: "containers", label: "Headers & Text", groups: ["Containers & Shapes"], defaultType: "section-header", placeholder: "e.g. Sales Overview" },
-  { key: "filters", label: "Filters", groups: ["Filters"], defaultType: "slicer", placeholder: "e.g. Region" },
-  { key: "kpis", label: "KPIs", groups: ["Cards & KPIs"], defaultType: "kpi-card", placeholder: "e.g. Total Sales" },
-  { key: "visuals", label: "Visuals", groups: ["Bar & Column", "Line & Area", "Pie & Part-to-whole", "Hierarchical & Flow", "Statistical", "Tables & Matrix", "Maps", "Time & Gantt", "Advanced / Other"], defaultType: "column-chart", placeholder: "e.g. Q4 Revenue" },
+  { key: "containers", label: "Headers & Text", groups: ["Containers & Shapes"], defaultType: "section-header", placeholder: "e.g. Sales Overview", color: "#a19f9d" },
+  { key: "filters", label: "Filters", groups: ["Filters"], defaultType: "slicer", placeholder: "e.g. Region", color: "#4ba3f0" },
+  { key: "kpis", label: "KPIs", groups: ["Cards & KPIs"], defaultType: "kpi-card", placeholder: "e.g. Total Sales", color: "#8f7be8" },
+  { key: "visuals", label: "Visuals", groups: ["Bar & Column", "Line & Area", "Pie & Part-to-whole", "Hierarchical & Flow", "Statistical", "Tables & Matrix", "Maps", "Time & Gantt", "Advanced / Other"], defaultType: "column-chart", placeholder: "e.g. Q4 Revenue", color: "#2fb58f" },
+];
+
+const PER_ROW_OPTIONS = [
+  { v: "auto", l: "Auto", tip: "Up to 4 per row" },
+  { v: "1", l: "1" },
+  { v: "2", l: "2" },
+  { v: "3", l: "3" },
+  { v: "4", l: "4" },
+  { v: "6", l: "6" },
+  { v: "all", l: "All", tip: "All in one row" },
 ];
 
 // Module-level so reopening the modal remembers what you were configuring.
@@ -21,6 +32,31 @@ const state = {
   kpis: [{ type: "kpi-card", label: "" }],
   visuals: [{ type: "column-chart", label: "" }],
 };
+
+// Layout per section (max visuals per row, or a custom pattern), remembered on this computer.
+const LAYOUT_KEY = "wfd-generate-layouts";
+const layouts = loadLayouts();
+
+function loadLayouts() {
+  const defaults = { containers: { perRow: "1", pattern: "" }, filters: { perRow: "all", pattern: "" }, kpis: { perRow: "all", pattern: "" }, visuals: { perRow: "2", pattern: "" } };
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "{}");
+    Object.keys(defaults).forEach((k) => { if (saved[k]) defaults[k] = { ...defaults[k], ...saved[k] }; });
+  } catch (err) { /* use defaults */ }
+  return defaults;
+}
+
+function saveLayouts() {
+  try {
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify(layouts));
+  } catch (err) { /* ignore */ }
+}
+
+let hintUpdaters = [];
+
+function currentSections() {
+  return SECTIONS.map((s) => ({ key: s.key, items: state[s.key], layout: layouts[s.key] }));
+}
 
 export function openGenerateModal() {
   render();
@@ -40,8 +76,16 @@ function render() {
       <h3>Generate visuals</h3>
       <button class="icon-btn" data-action="close">${UI.close}</button>
     </div>
-    <p class="generate-subtitle">Add a row per visual, pick its type and (optionally) its title — remove any you don't need — then generate the whole set at once, auto-arranged as a clean grid. Type any name you like, or pick a field from your uploaded schema.</p>
-    <div class="generate-sections" id="generate-sections"></div>
+    <p class="generate-subtitle">Add a row per visual, pick its type and (optionally) its title, and choose how many go in each row. The preview shows exactly where everything will land.</p>
+    <div class="generate-body">
+      <div class="generate-sections" id="generate-sections"></div>
+      <div class="generate-preview">
+        <div class="gp-head"><span>Preview</span><span class="gp-size" id="gp-size"></span></div>
+        <div class="gp-page-wrap"><div class="gp-page" id="gp-page"></div></div>
+        <div class="gp-legend">${SECTIONS.map((s) => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join("")}<span><i class="existing"></i>Already on page</span></div>
+        <div class="gp-warnings" id="gp-warnings"></div>
+      </div>
+    </div>
     <div class="modal-actions" style="justify-content:space-between;align-items:center">
       <span class="generate-total" id="generate-total"></span>
       <div class="row" style="gap:8px">
@@ -59,19 +103,21 @@ function render() {
   const groups = groupedCatalog();
   const totalLabel = modal.querySelector("#generate-total");
 
-  const updateTotal = () => {
+  hintUpdaters = [];
+  const refresh = () => {
+    hintUpdaters.forEach((fn) => fn());
     const total = SECTIONS.reduce((sum, s) => sum + state[s.key].length, 0);
     totalLabel.textContent = total ? `${total} visual${total === 1 ? "" : "s"} to add` : "Nothing selected yet";
+    renderPreview(modal);
   };
 
   SECTIONS.forEach((section) => {
-    sectionsWrap.appendChild(buildSection(section, groups, updateTotal));
+    sectionsWrap.appendChild(buildSection(section, groups, refresh));
   });
-  updateTotal();
+  refresh();
 
   modal.querySelector('[data-action="generate"]').addEventListener("click", () => {
-    const orderedGroups = SECTIONS.map((s) => state[s.key]);
-    const created = store.generateElements(orderedGroups);
+    const created = store.generateElements(currentSections());
     close();
     if (created.length) {
       showToast(`Added ${created.length} visual${created.length === 1 ? "" : "s"} to the canvas`, "success");
@@ -82,6 +128,42 @@ function render() {
     }
   });
 }
+
+// ---------------- live preview ----------------
+
+function renderPreview(modal) {
+  const pageEl = modal.querySelector("#gp-page");
+  const page = store.getCurrentPage();
+  const { width, height } = store.doc.canvas;
+  const plan = planGenerateLayout(currentSections(), { canvasWidth: width, canvasHeight: height, startY: generateStartY(page) });
+  const pageH = plan.neededHeight;
+
+  modal.querySelector("#gp-size").textContent = pageH > height ? `${width} × ${pageH}px (page grows from ${height})` : `${width} × ${pageH}px`;
+  pageEl.style.aspectRatio = `${width} / ${pageH}`;
+  pageEl.innerHTML = "";
+  const pct = (v, total) => `${(v / total) * 100}%`;
+  const place = (box, cls, color, label) => {
+    const b = h("div", { class: `gp-box ${cls}` }, label ? h("span", {}, label) : null);
+    b.style.left = pct(box.x, width);
+    b.style.top = pct(box.y, pageH);
+    b.style.width = pct(box.w, width);
+    b.style.height = pct(box.h, pageH);
+    if (color) b.style.background = color;
+    pageEl.appendChild(b);
+  };
+  page.elements.filter((e) => !e.hidden).forEach((e) => place(e, "existing"));
+  const colorOf = Object.fromEntries(SECTIONS.map((s) => [s.key, s.color]));
+  plan.boxes.forEach((b) => place(b, "new", colorOf[b.sectionKey], (b.label && b.label.trim()) || b.def.label));
+
+  const warnEl = modal.querySelector("#gp-warnings");
+  warnEl.innerHTML = "";
+  plan.warnings.forEach((w) => {
+    const section = SECTIONS.find((s) => s.key === w.sectionKey);
+    warnEl.appendChild(h("div", { class: "gp-warning" }, `${section.label}: ${w.perRow} per row makes each one ${w.width}px wide — a ${w.label} needs about ${w.minWidth}px. Try fewer per row.`));
+  });
+}
+
+// ---------------- sections ----------------
 
 const FIELD_DATALIST_ID = "generate-field-suggestions";
 
@@ -102,9 +184,10 @@ function buildFieldDatalist() {
   return datalist;
 }
 
-function buildSection(section, groups, updateTotal) {
+function buildSection(section, groups, refresh) {
   const wrap = h("div", { class: "generate-section" });
   const header = h("div", { class: "generate-section-header" }, [
+    h("span", { class: "gs-dot", style: `background:${section.color}` }),
     h("span", { class: "gs-title" }, section.label),
   ]);
   const rowsWrap = h("div", { class: "generate-section-rows" });
@@ -117,12 +200,13 @@ function buildSection(section, groups, updateTotal) {
     const last = rows[rows.length - 1];
     rows.push({ type: last ? last.type : section.defaultType, label: "" });
     renderRows();
-    updateTotal();
+    refresh();
   });
 
   header.appendChild(addBtn);
   wrap.appendChild(header);
   wrap.appendChild(rowsWrap);
+  wrap.appendChild(buildLayoutControl(section, refresh));
 
   function renderRows() {
     rowsWrap.innerHTML = "";
@@ -134,16 +218,16 @@ function buildSection(section, groups, updateTotal) {
     rows.forEach((rowState, idx) => {
       const row = h("div", { class: "generate-row" });
       const select = buildSelect(section, groups, rowState.type);
-      select.addEventListener("change", () => { state[section.key][idx].type = select.value; });
+      select.addEventListener("change", () => { state[section.key][idx].type = select.value; refresh(); });
 
       const labelInput = h("input", { type: "text", class: "gr-label-input", placeholder: section.placeholder, value: rowState.label, list: FIELD_DATALIST_ID, autocomplete: "off" });
-      labelInput.addEventListener("input", () => { state[section.key][idx].label = labelInput.value; });
+      labelInput.addEventListener("input", () => { state[section.key][idx].label = labelInput.value; refresh(); });
 
       const delBtn = h("button", { class: "gr-del-btn", type: "button", "data-tip": "Remove this row", html: UI.close });
       delBtn.addEventListener("click", () => {
         state[section.key].splice(idx, 1);
         renderRows();
-        updateTotal();
+        refresh();
       });
       row.appendChild(select);
       row.appendChild(labelInput);
@@ -153,6 +237,48 @@ function buildSection(section, groups, updateTotal) {
   }
   renderRows();
 
+  return wrap;
+}
+
+// "Max per row: Auto 1 2 3 4 6 All" plus a custom pattern box (e.g. 3,2,1).
+function buildLayoutControl(section, refresh) {
+  const layout = layouts[section.key];
+  const wrap = h("div", { class: "gs-layout" }, [h("span", { class: "gs-layout-label" }, "Max per row")]);
+  const seg = h("div", { class: "gs-perrow" });
+  const pattern = h("input", { type: "text", class: "gs-pattern", placeholder: "Custom e.g. 3,2,1", value: layout.pattern, "data-tip": "Visuals in each row, left to right — the last number repeats" });
+  const hint = h("span", { class: "gs-layout-hint" });
+
+  const update = () => {
+    const usingPattern = !!parsePattern(layout.pattern);
+    seg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", !usingPattern && b.dataset.v === layout.perRow));
+    pattern.classList.toggle("invalid", !!layout.pattern.trim() && !usingPattern);
+    saveLayouts();
+    refresh();
+  };
+
+  PER_ROW_OPTIONS.forEach((o) => {
+    const b = h("button", { type: "button", "data-v": o.v, "data-tip": o.tip || `${o.v} per row` }, o.l);
+    b.addEventListener("click", () => {
+      layout.perRow = o.v;
+      layout.pattern = "";
+      pattern.value = "";
+      update();
+    });
+    seg.appendChild(b);
+  });
+  pattern.addEventListener("input", () => { layout.pattern = pattern.value; update(); });
+
+  wrap.appendChild(seg);
+  wrap.appendChild(pattern);
+  wrap.appendChild(hint);
+  // "→ 3 rows: 2 + 2 + 2" — refreshed with the preview, so it follows added/removed rows.
+  hintUpdaters.push(() => {
+    const sizes = rowSizes(state[section.key].length, layout);
+    hint.textContent = sizes.length ? `→ ${sizes.length} row${sizes.length === 1 ? "" : "s"}: ${sizes.join(" + ")}` : "";
+  });
+
+  const usingPattern = !!parsePattern(layout.pattern);
+  seg.querySelectorAll("button").forEach((b) => b.classList.toggle("active", !usingPattern && b.dataset.v === layout.perRow));
   return wrap;
 }
 

@@ -4,15 +4,13 @@ import { zoomIn, zoomOut, fitToScreen, setZoom } from "./canvas.js";
 import { downloadProjectJSON, loadProjectFromFile } from "../export/exportProject.js";
 import { exportCurrentPageJPG, copyPageToClipboard } from "../export/exportImage.js";
 import { showToast } from "./toast.js";
-import { openProjectsModal } from "./projectsModal.js";
+import { showStartScreen } from "./startScreen.js";
 import { openGenerateModal } from "./generateModal.js";
 import { openExportPdfModal } from "./exportPdfModal.js";
 import { openCopyToSlidesModal } from "./copyToSlidesModal.js";
-import { createSharedFile, openSharedFile, reloadFromLinkedFile, unlinkFile, isLinked, getLinkedFileName, restoreLinkForCurrentProject } from "../export/sharedFile.js";
-
-function linkedFileName() {
-  return getLinkedFileName();
-}
+import { openProjectFile, saveProjectFile, saveProjectFileAs, syncNow, unlinkProjectFile, startNewProject, getFileState } from "../wfd/projectFile.js";
+import { ensureIdentity } from "../wfd/identity.js";
+import { openMembersModal } from "./membersModal.js";
 
 let menuBarEl;
 let openMenu = null;
@@ -39,7 +37,7 @@ export function initMenuBar() {
   store.on("selection:change", () => { if (!openMenu) render(); });
   store.on("history:change", () => { if (!openMenu) render(); });
   store.on("settings:change", () => { if (!openMenu) render(); });
-  window.addEventListener("wfd:shared-file-change", () => { if (!openMenu) render(); });
+  window.addEventListener("wfd:file-change", () => { if (!openMenu) render(); });
 }
 
 function closeMenu() {
@@ -90,21 +88,26 @@ function renderMenuItem(it) {
 function render() {
   menuBarEl.innerHTML = "";
 
+  const file = getFileState();
   const fileMenu = menuRoot("File", [
-    { label: "New Wireframe", action: () => { store.newDocument(); restoreLinkForCurrentProject(); showToast("Started a new wireframe"); } },
-    { label: "Open / My Wireframes…", action: () => openProjectsModal() },
-    { label: "Import from File…", action: () => document.getElementById("file-input-project").click() },
-    { label: "Download Project File (.json)…", action: () => downloadProjectJSON() },
+    { label: "Home (Recent Projects)…", action: () => showStartScreen({ closable: true }) },
+    { label: "New Project", action: () => startNewProject().then(() => showToast("Started a new project — press Ctrl+S to save it as a file")) },
+    { label: "Open Project File (.wfd)…", shortcut: "Ctrl+O", action: () => openProjectFile() },
     { sep: true },
-    { label: linkedFileName() ? `Linked to "${linkedFileName()}"` : "Create Shared File…", action: () => (linkedFileName() ? null : createSharedFile()), disabled: !!linkedFileName() },
-    { label: "Open Shared File…", action: () => openSharedFile() },
-    { label: "Reload from Shared File", action: () => reloadFromLinkedFile(), disabled: !isLinked() },
-    { label: "Unlink Shared File", action: () => unlinkFile(), disabled: !isLinked() },
+    { label: "Save", shortcut: "Ctrl+S", action: () => saveProjectFile() },
+    { label: file.linked ? "Save As (a copy)…" : "Save As…", shortcut: "Ctrl+Shift+S", action: () => saveProjectFileAs() },
+    { label: "Sync Now", action: () => syncNow(), disabled: !file.linked },
+    { label: "Stop Saving to This File", action: () => unlinkProjectFile(), disabled: !file.linked },
+    { sep: true },
+    { label: "Import Old Project (.wfd.json)…", action: () => document.getElementById("file-input-project").click() },
+    { label: "Download a Copy (.wfd)", action: () => downloadProjectJSON() },
     { sep: true },
     { label: "Rename Wireframe…", action: () => {
       const name = prompt("Wireframe title", store.doc.meta.title);
       if (name) store.renameDocument(name);
     } },
+    { label: "Project Members…", action: () => openMembersModal() },
+    { label: "My Profile (Name and Email)…", action: () => ensureIdentity(true) },
   ]);
 
   const editMenu = menuRoot("Edit", [

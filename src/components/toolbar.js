@@ -4,10 +4,12 @@ import { h } from "../utils/dom.js";
 import { zoomIn, zoomOut, fitToScreen, setZoom } from "./canvas.js";
 import { showToast } from "./toast.js";
 import { exportCurrentPageJPG, copyPageToClipboard } from "../export/exportImage.js";
-import { openProjectsModal } from "./projectsModal.js";
+import { showStartScreen } from "./startScreen.js";
 import { openGenerateModal } from "./generateModal.js";
 import { openExportPdfModal } from "./exportPdfModal.js";
 import { openCopyToSlidesModal } from "./copyToSlidesModal.js";
+import { attachFloatingMenu } from "./floatingMenu.js";
+import { saveProjectFile } from "../wfd/projectFile.js";
 
 let toolbarEl;
 let exportIncludeComments = false;
@@ -46,11 +48,12 @@ function render() {
   toolbarEl.appendChild(titleInput);
 
   toolbarEl.appendChild(
-    h("button", { class: "btn sm", "data-tip": "Start a new wireframe or reopen a saved one", onclick: () => openProjectsModal() }, [
+    h("button", { class: "btn sm", "data-tip": "Start a new project or open another one", onclick: () => showStartScreen({ closable: true }) }, [
       h("span", { class: "icon", style: "width:13px;height:13px", html: UI.folder }),
-      "Projects",
+      h("span", { class: "btn-label" }, "Projects"),
     ])
   );
+  toolbarEl.appendChild(renderSaveButton());
   toolbarEl.appendChild(h("div", { class: "vdivider" }));
 
   // Tools group
@@ -77,7 +80,7 @@ function render() {
   toolbarEl.appendChild(h("div", { class: "vdivider" }));
 
   // Edit ops group
-  const editOps = h("div", { class: "toolbar-group" });
+  const editOps = h("div", { class: "toolbar-group toolbar-edit-ops" });
   editOps.appendChild(iconBtn({ icon: UI.duplicate, tip: "Duplicate (Ctrl+D)", id: "op-duplicate", onclick: () => store.duplicateElements(store.selection) }));
   editOps.appendChild(iconBtn({ icon: UI.delete, tip: "Delete (Del)", id: "op-delete", onclick: () => store.deleteElements(store.selection) }));
   editOps.appendChild(iconBtn({ icon: UI.bringForward, tip: "Bring Forward", id: "op-forward", onclick: () => store.reorderZ(store.selection, "forward") }));
@@ -131,113 +134,60 @@ function renderThemeToggle() {
   return btn;
 }
 
+function commentsToggleItem() {
+  const label = () => `${exportIncludeComments ? "☑" : "☐"} Include comment sticky notes`;
+  const item = h("div", { class: "menu-item" }, [h("span", {}, label())]);
+  item.addEventListener("click", () => {
+    exportIncludeComments = !exportIncludeComments;
+    document.querySelectorAll("[data-role='export-comments-toggle'] span").forEach((s) => { s.textContent = label(); });
+  });
+  item.setAttribute("data-role", "export-comments-toggle");
+  return item;
+}
+
 function renderCopyToSlidesButton() {
-  const root = h("div", { class: "menu-root split-btn" });
+  const root = h("div", { class: "split-btn" });
   const mainBtn = h("button", { class: "btn sm split-btn-main", "data-tip": "Copy this page as an image — then paste (Ctrl+V) into Google Slides" }, [
     h("span", { class: "icon", style: "width:14px;height:14px", html: UI.clipboard }),
-    "Copy to Slides",
+    h("span", { class: "btn-label" }, "Copy to Slides"),
   ]);
   const caretBtn = h("button", { class: "icon-btn split-btn-caret", "data-tip": "More copy options", html: UI.chevDown });
-  const dropdown = h("div", { class: "menu-dropdown hidden", style: "right:0;left:auto" });
+  const dropdown = h("div", { class: "menu-dropdown" });
+  const menu = attachFloatingMenu(caretBtn, dropdown);
 
   mainBtn.addEventListener("click", () => copyPageToClipboard(exportIncludeComments));
-
   const allPagesItem = h("div", { class: "menu-item" }, [h("span", {}, "Copy Pages to Google Slides…")]);
-  allPagesItem.addEventListener("click", () => { close(); openCopyToSlidesModal(exportIncludeComments); });
-
-  const sep = h("div", { class: "menu-sep" });
-
-  const commentsItem = h("div", { class: "menu-item" }, [
-    h("span", {}, `${exportIncludeComments ? "☑" : "☐"} Include comment sticky notes`),
-  ]);
-  commentsItem.addEventListener("click", () => {
-    exportIncludeComments = !exportIncludeComments;
-    commentsItem.firstChild.textContent = `${exportIncludeComments ? "☑" : "☐"} Include comment sticky notes`;
-  });
-
-  [allPagesItem, sep, commentsItem].forEach((n) => dropdown.appendChild(n));
-
-  function close() {
-    dropdown.classList.add("hidden");
-    caretBtn.classList.remove("open");
-    document.removeEventListener("click", onOutsideClick);
-  }
-  function onOutsideClick(e) {
-    if (!root.contains(e.target)) close();
-  }
-  caretBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isHidden = dropdown.classList.contains("hidden");
-    if (isHidden) {
-      dropdown.classList.remove("hidden");
-      caretBtn.classList.add("open");
-      setTimeout(() => document.addEventListener("click", onOutsideClick), 0);
-    } else {
-      close();
-    }
-  });
+  allPagesItem.addEventListener("click", () => { menu.close(); openCopyToSlidesModal(exportIncludeComments); });
+  [allPagesItem, h("div", { class: "menu-sep" }), commentsToggleItem()].forEach((n) => dropdown.appendChild(n));
 
   root.appendChild(mainBtn);
   root.appendChild(caretBtn);
-  root.appendChild(dropdown);
   return root;
 }
 
 function renderExportButton() {
-  const root = h("div", { class: "menu-root" });
   const trigger = h("button", { class: "btn primary sm", "data-tip": "Export your wireframe as JPG or PDF" }, [
     h("span", { class: "icon", style: "width:14px;height:14px", html: UI.export }),
     "Export",
+    h("span", { class: "icon", style: "width:10px;height:10px;margin-left:2px", html: UI.chevDown }),
   ]);
-  const dropdown = h("div", { class: "menu-dropdown hidden", style: "right:0;left:auto" });
+  const dropdown = h("div", { class: "menu-dropdown" });
+  const menu = attachFloatingMenu(trigger, dropdown);
 
   const jpgItem = h("div", { class: "menu-item" }, [h("span", {}, "Export Page as JPG")]);
-  jpgItem.addEventListener("click", () => {
-    close();
-    exportCurrentPageJPG(exportIncludeComments);
-  });
-
+  jpgItem.addEventListener("click", () => { menu.close(); exportCurrentPageJPG(exportIncludeComments); });
   const pdfItem = h("div", { class: "menu-item" }, [h("span", {}, "Export as PDF…")]);
-  pdfItem.addEventListener("click", () => {
-    close();
-    openExportPdfModal(exportIncludeComments);
-  });
+  pdfItem.addEventListener("click", () => { menu.close(); openExportPdfModal(exportIncludeComments); });
+  [jpgItem, pdfItem, h("div", { class: "menu-sep" }), commentsToggleItem()].forEach((n) => dropdown.appendChild(n));
+  return trigger;
+}
 
-  const sep = h("div", { class: "menu-sep" });
-
-  const commentsItem = h("div", { class: "menu-item" }, [
-    h("span", {}, `${exportIncludeComments ? "☑" : "☐"} Include comment badges`),
+function renderSaveButton() {
+  const btn = h("button", { class: "btn sm", id: "toolbar-save-btn", "data-tip": "Save (Ctrl+S)", onclick: () => saveProjectFile() }, [
+    h("span", { class: "icon", style: "width:13px;height:13px", html: UI.save }),
+    h("span", { class: "btn-label" }, "Save"),
   ]);
-  commentsItem.addEventListener("click", () => {
-    exportIncludeComments = !exportIncludeComments;
-    commentsItem.firstChild.textContent = `${exportIncludeComments ? "☑" : "☐"} Include comment badges`;
-  });
-
-  [jpgItem, pdfItem, sep, commentsItem].forEach((n) => dropdown.appendChild(n));
-
-  function close() {
-    dropdown.classList.add("hidden");
-    trigger.classList.remove("open");
-    document.removeEventListener("click", onOutsideClick);
-  }
-  function onOutsideClick(e) {
-    if (!root.contains(e.target)) close();
-  }
-  trigger.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isHidden = dropdown.classList.contains("hidden");
-    if (isHidden) {
-      dropdown.classList.remove("hidden");
-      trigger.classList.add("open");
-      setTimeout(() => document.addEventListener("click", onOutsideClick), 0);
-    } else {
-      close();
-    }
-  });
-
-  root.appendChild(trigger);
-  root.appendChild(dropdown);
-  return root;
+  return btn;
 }
 
 function updateDynamic() {

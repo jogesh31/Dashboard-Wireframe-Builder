@@ -1,5 +1,12 @@
 import { store } from "../store.js";
-import { isLinked, getLinkedFileName, reloadFromLinkedFile } from "../export/sharedFile.js";
+import { getFileState, reconnectProjectFile, syncNow, saveProjectFileAs } from "../wfd/projectFile.js";
+
+const FILE_STATUS = {
+  synced: { label: "Saved to file", tip: "Every change saves to this file. Click to check for other people's changes now." },
+  syncing: { label: "Syncing…", tip: "Saving to the project file" },
+  "needs-permission": { label: "Click to reconnect", tip: "The browser needs your permission again to save to this file" },
+  error: { label: "Can't reach file", tip: "" },
+};
 
 let statusEl;
 
@@ -13,7 +20,7 @@ export function initStatusBar() {
   store.on("elements:change", render);
   store.on("ui:change", render);
   document.addEventListener("wfd:statusbar-update", render);
-  window.addEventListener("wfd:shared-file-change", render);
+  window.addEventListener("wfd:file-change", render);
 }
 
 function render() {
@@ -22,7 +29,7 @@ function render() {
   const zoom = Math.round((store.doc.settings.zoom || 1) * 100);
   const selCount = store.selection.length;
   const saving = store.ui.autosaveState === "saving";
-  const linked = isLinked();
+  const file = getFileState();
 
   let selectionText = "No selection";
   if (selCount === 1) {
@@ -39,7 +46,7 @@ function render() {
     <span class="vdivider"></span>
     <span>${escapeAttr(selectionText)}</span>
     <span class="toolbar-spacer" style="flex:1"></span>
-    ${linked ? `<button class="statusbar-link-btn" id="statusbar-link-btn" data-tip="Click to reload the latest saved changes">🔗 ${escapeAttr(getLinkedFileName())} — reload</button><span class="vdivider"></span>` : ""}
+    ${fileChip(file)}<span class="vdivider"></span>
     <span>${store.doc.canvas.width} × ${store.doc.canvas.height}px</span>
     <span class="vdivider"></span>
     <span>Zoom ${zoom}%</span>
@@ -49,10 +56,25 @@ function render() {
     <a class="statusbar-credit" id="statusbar-credit" href="https://www.linkedin.com/in/jogeshkumarsharma/" target="_blank" rel="noopener noreferrer" data-tip="Connect on LinkedIn">Powered by Jogesh</a>
   `;
 
-  const linkBtn = document.getElementById("statusbar-link-btn");
-  if (linkBtn) linkBtn.addEventListener("click", () => reloadFromLinkedFile());
+  const fileBtn = document.getElementById("statusbar-file-btn");
+  if (fileBtn) {
+    fileBtn.addEventListener("click", () => {
+      if (!file.linked) saveProjectFileAs();
+      else if (file.status === "needs-permission") reconnectProjectFile();
+      else syncNow();
+    });
+  }
+}
+
+function fileChip(file) {
+  if (!file.linked) {
+    return `<button class="statusbar-link-btn muted" id="statusbar-file-btn" data-tip="Only saved on this computer. Click to save as a .wfd file you can share (e.g. in OneDrive).">Not saved to a file</button>`;
+  }
+  const s = FILE_STATUS[file.status] || FILE_STATUS.synced;
+  const tip = file.status === "error" ? file.error : s.tip;
+  return `<button class="statusbar-link-btn ${escapeAttr(file.status)}" id="statusbar-file-btn" data-tip="${escapeAttr(tip)}">${escapeAttr(file.name)} · ${s.label}</button>`;
 }
 
 function escapeAttr(s) {
-  return String(s).replace(/</g, "&lt;");
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 }

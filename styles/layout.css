@@ -144,6 +144,38 @@
   text-overflow: ellipsis;
 }
 .statusbar-link-btn:hover { border-color: var(--accent); }
+.statusbar-link-btn.muted { background: transparent; border-color: var(--border-color); color: var(--text-secondary); }
+.statusbar-link-btn.needs-permission,
+.statusbar-link-btn.error { background: var(--danger-soft); color: var(--danger); }
+
+/* Banner above the canvas: other people's changes, OneDrive conflict copies */
+#sync-banner { container-type: inline-size; }
+#sync-banner:empty { display: none; }
+@container (max-width: 560px) { .sync-legend { display: none; } }
+.sync-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border-color);
+}
+.sync-banner.warn { background: color-mix(in srgb, var(--warning) 18%, transparent); }
+.sync-banner.danger { background: var(--danger-soft); }
+.sync-banner-text { flex: 1; min-width: 220px; }
+.sync-banner-pages { color: var(--text-secondary); }
+.sync-page-link {
+  background: none; border: none; padding: 0 2px; margin: 0 2px;
+  color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline;
+}
+.sync-legend { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 11px; }
+.sync-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-left: 6px; }
+.sync-dot.added { background: var(--success); }
+.sync-dot.modified { background: var(--warning); }
+.sync-dot.commented { background: var(--accent); }
 
 .panel-scroll {
   overflow-y: auto;

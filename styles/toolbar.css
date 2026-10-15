@@ -41,6 +41,20 @@
   .brand .brand-text { display: none; }
   .brand { padding-right: 6px; margin-right: 0; }
 }
+/* Narrower screens (most laptops at 125–150% scaling): shrink secondary buttons
+   to icons and drop the arrange buttons (they're in the Edit menu too), so
+   Save and Export always stay on screen. */
+@media (max-width: 1360px) {
+  .split-btn-main .btn-label { display: none; }
+  .doc-title-input { width: 130px; }
+}
+@media (max-width: 1240px) {
+  #top-toolbar .toolbar-edit-ops, #top-toolbar .toolbar-edit-ops + .vdivider { display: none; }
+  #top-toolbar .btn .btn-label { display: none; }
+}
+@media (max-width: 1040px) {
+  .zoom-control .icon-btn:not(:first-child):not(:nth-child(3)) { display: none; }
+}
 .toolbar-group {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import { store } from "../store.js";
 import { showToast, showProgressToast } from "../components/toast.js";
 import { escapeHtml } from "../utils/dom.js";
+import { isOpen, statusOf, typeLabel } from "../wfd/comments.js";
 
 function slugify(name) {
   return (name || "wireframe").trim().replace(/[^a-z0-9\-_ ]/gi, "").replace(/\s+/g, "-").toLowerCase() || "wireframe";
@@ -44,19 +45,22 @@ function addStickyNotes(page) {
   const noteWidth = 210;
   const notes = [];
 
+  // Only open / in-progress comments go on the export — done ones are counted.
   page.elements
-    .filter((el) => !el.hidden && el.comments && el.comments.length)
+    .filter((el) => !el.hidden && el.comments && el.comments.some(isOpen))
     .forEach((el) => {
-      const sorted = el.comments.slice().sort((a, b) => b.createdAt - a.createdAt);
-      const shown = sorted.slice(0, 3);
+      const open = el.comments.filter(isOpen).sort((a, b) => b.createdAt - a.createdAt);
+      const done = el.comments.length - open.length;
+      const shown = open.slice(0, 3);
+      const tags = (c) => [typeLabel(c.type), statusOf(c) === "in-progress" ? "In progress" : "", c.assignee ? `→ ${c.assignee}` : ""].filter(Boolean).join(" · ");
 
       const note = document.createElement("div");
       note.className = "export-sticky-note";
       note.style.width = `${noteWidth}px`;
       note.innerHTML = `
-        <div class="esn-header">🗒 ${sorted.length} comment${sorted.length === 1 ? "" : "s"} — ${escapeHtml(el.name || el.type)}</div>
-        ${shown.map((c) => `<div class="esn-item"><span class="esn-author">${escapeHtml(c.author)}${c.resolved ? " (resolved)" : ""}:</span> ${escapeHtml(c.text)}</div>`).join("")}
-        ${sorted.length > shown.length ? `<div class="esn-more">+${sorted.length - shown.length} more…</div>` : ""}
+        <div class="esn-header">🗒 ${open.length} open comment${open.length === 1 ? "" : "s"} — ${escapeHtml(el.name || el.type)}</div>
+        ${shown.map((c) => `<div class="esn-item">${tags(c) ? `<div class="esn-tags">${escapeHtml(tags(c))}</div>` : ""}<span class="esn-author">${escapeHtml(c.author)}:</span> ${escapeHtml(c.text)}${c.replies?.length ? ` <span class="esn-more">(${c.replies.length} repl${c.replies.length === 1 ? "y" : "ies"})</span>` : ""}</div>`).join("")}
+        ${open.length > shown.length || done ? `<div class="esn-more">${open.length > shown.length ? `+${open.length - shown.length} more open` : ""}${open.length > shown.length && done ? " · " : ""}${done ? `${done} done` : ""}</div>` : ""}
       `;
       // Off-canvas first so we can measure its natural height before placing it.
       note.style.left = "-9999px";
@@ -87,14 +91,22 @@ async function capturePageCanvas(page, withNotes) {
     throw new Error("Export library didn't load — check your connection and reload the page");
   }
   const notes = withNotes ? addStickyNotes(page) : [];
+  let timer;
   try {
-    return await html2canvas(target, {
-      backgroundColor: store.getCurrentPage().background || "#ffffff",
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
+    // Never let one stuck page hang the whole export (and leave the editor in
+    // export mode) — fail with a clear message instead.
+    return await Promise.race([
+      html2canvas(target, {
+        backgroundColor: store.getCurrentPage().background || "#ffffff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        imageTimeout: 10000,
+      }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`page "${page.name}" took too long to render`)), 60000); }),
+    ]);
   } finally {
+    clearTimeout(timer);
     removeStickyNotes(notes);
   }
 }
