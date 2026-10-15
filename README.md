@@ -4,7 +4,7 @@ A Windows desktop app for designing Power BI–style dashboard wireframes with y
 
 ## Download and install
 
-1. Go to **[Releases](../../releases/latest)** and download **`Wireframe Designer Setup 1.0.0.exe`** (one file).
+1. Download **[Wireframe.Designer.Setup.1.0.0.exe](https://github.com/jogesh31/Dashboard-Wireframe-Builder/releases/latest/download/Wireframe.Designer.Setup.1.0.0.exe)** (one file) — or pick it from **[Releases](https://github.com/jogesh31/Dashboard-Wireframe-Builder/releases/latest)**.
 2. Double-click it and follow the setup. It installs for the current user — **no admin rights needed** — and adds a desktop shortcut and Start menu entry.
 3. Windows may show **"Windows protected your PC"** because the installer isn't code-signed: click **More info ▸ Run anyway**.
 4. Open **Wireframe Designer**, confirm your name and work email (picked up from the Office / OneDrive account on your PC), and start a new project.
