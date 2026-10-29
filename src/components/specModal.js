@@ -142,17 +142,23 @@ export function showSpecPreview(elId, anchor) {
   const el = store.findElementAnyPage(elId)?.el;
   if (!el) return;
   const t = specTexts(el);
-  if (!t.logic.trim() && !t.description.trim()) return;
-  const status = SPEC_STATUSES.find((s) => s.id === t.status)?.label || "Draft";
-  const section = (label, text, cls) => `<div class="sp-section"><div class="sp-label">${label}</div>${text.trim() ? `<div class="sp-text ${cls}">${escapeHtml(text)}</div>` : `<div class="sp-empty">Not written yet</div>`}</div>`;
+  // Always show the card (even before anything is written) so hovering the
+  // fx button reliably shows Logic and Description together.
+  const empty = !t.logic.trim() && !t.description.trim();
+  const stateId = empty ? "none" : t.status;
+  const status = empty ? "Not started" : SPEC_STATUSES.find((s) => s.id === t.status)?.label || "Draft";
+  const section = (label, text, cls) => `<div class="sp-section"><div class="sp-label">${label}</div>${text.trim() ? `<div class="sp-text ${cls}">${escapeHtml(text)}</div>` : `<div class="sp-empty">Not written yet — click the fx button to add</div>`}</div>`;
   previewEl = h("div", { class: "spec-preview", role: "tooltip" });
   previewEl.innerHTML = `
-    <div class="sp-head"><span class="sp-title">${escapeHtml(visualTitle(el))}</span><span class="sp-status spec-${escapeHtml(t.status)}">${escapeHtml(status)}</span></div>
+    <div class="sp-head"><span class="sp-title">${escapeHtml(visualTitle(el))}</span><span class="sp-status spec-${escapeHtml(stateId)}">${escapeHtml(status)}</span></div>
     ${section("Logic", t.logic, "logic")}
     ${section("Description", t.description, "")}
     <div class="sp-foot">${el.spec?.updatedAt ? `Last saved by ${escapeHtml(el.spec.updatedBy || "someone")} · ${escapeHtml(formatTime(el.spec.updatedAt))} · ` : ""}Click to edit</div>`;
   document.body.appendChild(previewEl);
-  const r = anchor.getBoundingClientRect();
+  // Measure the button that's on screen now — the canvas may have redrawn the
+  // visual (and its button) since the hover started.
+  const live = document.querySelector(`#el-${CSS.escape(elId)} [data-role="spec"]`);
+  const r = (live && live.getBoundingClientRect().width ? live : anchor).getBoundingClientRect();
   const pw = previewEl.offsetWidth, ph = previewEl.offsetHeight;
   let left = Math.max(8, Math.min(r.left + r.width / 2 - pw / 2, window.innerWidth - pw - 8));
   let top = r.bottom + 8;

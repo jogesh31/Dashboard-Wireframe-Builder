@@ -105,8 +105,7 @@ function elOverlayFragment(el) {
     const specBtn = document.createElement("button");
     specBtn.className = `el-spec-btn spec-${state}`;
     specBtn.dataset.role = "spec";
-    // Empty: a plain tooltip. With content, hovering shows the full preview card instead.
-    if (state === "none") specBtn.setAttribute("data-tip", "Add logic and description");
+    // Hovering always shows the full Logic + Description preview card.
     specBtn.setAttribute("aria-label", state === "none" ? "Add logic and description" : "Logic and description");
     specBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5v16h4M15 4h4v16h-4"/><path d="M9 12h6"/></svg><span>fx</span>`;
     frag.appendChild(specBtn);

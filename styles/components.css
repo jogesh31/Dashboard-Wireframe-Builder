@@ -163,6 +163,7 @@ textarea { resize: vertical; min-height: 50px; }
 .sp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.12); }
 .sp-title { font-size: 13.5px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp-status { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.sp-status.spec-none { background: #3a4366; color: #d7daf2; }
 .sp-status.spec-draft { background: #f5b800; color: #2b2100; }
 .sp-status.spec-confirmed { background: #3b9dff; color: #04213f; }
 .sp-status.spec-built { background: #2fc463; color: #062b14; }

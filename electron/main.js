@@ -225,14 +225,16 @@ function createWindow() {
   });
 
   // Links (e.g. the LinkedIn credit) open in the user's browser, never inside the app.
+  // https links open in the browser; mailto: links (assignment emails) open the user's mail app.
+  const isExternal = (url) => /^(https?:\/\/|mailto:)/i.test(url);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    if (isExternal(url)) shell.openExternal(url);
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (e, url) => {
     if (!url.startsWith("app://")) {
       e.preventDefault();
-      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+      if (isExternal(url)) shell.openExternal(url);
     }
   });
 

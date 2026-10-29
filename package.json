@@ -1,7 +1,7 @@
 {
   "name": "wireframe-designer",
   "productName": "Wireframe Designer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Dashboard wireframe designer with shared .wfd project files",
   "author": "Jogesh Kumar",
   "license": "UNLICENSED",
@@ -18,7 +18,10 @@
   "build": {
     "appId": "com.acc.wireframedesigner",
     "productName": "Wireframe Designer",
-    "directories": { "output": "dist", "buildResources": "build" },
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
     "electronDist": "node_modules/electron/dist",
     "files": [
       "index.html",
@@ -47,6 +50,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Wireframe Designer"
-    }
+    },
+    "artifactName": "Wireframe-Designer-Setup.exe"
   }
 }

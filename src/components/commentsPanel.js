@@ -4,10 +4,12 @@ import { h, escapeHtml, formatTime, debounce } from "../utils/dom.js";
 import { getIdentity } from "../wfd/identity.js";
 import {
   COMMENT_STATUSES, COMMENT_TYPES, DEFAULT_COMMENT_TYPE,
-  statusOf, statusLabel, typeLabel, isOpen, involvesMe, isMine, knownPeople, renderCommentText, resolvePerson, personLabel,
+  statusOf, statusLabel, typeLabel, isOpen, involvesMe, isMine, knownPeople, renderCommentText, personLabel,
 } from "../wfd/comments.js";
 import { attachMentionAutocomplete, initials } from "./mentionInput.js";
 import { showToast } from "./toast.js";
+import { openAssignPicker } from "./assignPicker.js";
+import { emailAssignee } from "../wfd/notify.js";
 
 // ---------------- review panel state ----------------
 // scope: "visual" (the selected visual), "page", or "all" (every page).
@@ -292,65 +294,38 @@ function renderCommentCard({ comment: c, elId, elName, pageId, pageName }, { sho
   return card;
 }
 
-// A text box with the project's people as suggestions ("Name <email>").
-// Typing must end up as one of them or a new email address.
-function personInput(listId, initial, placeholder, cls) {
-  const input = h("input", { class: cls, list: listId, value: initial, placeholder, autocomplete: "off" });
-  const datalist = h("datalist", { id: listId }, people().filter((p) => p.email).map((p) => h("option", { value: personLabel(p) })));
-  return { input, datalist };
-}
+const ASSIGN_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>`;
+const CHEVRON = `<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
 
 function currentAssigneeLabel(c) {
   return c.assignee ? personLabel({ name: c.assignee, email: c.assigneeEmail }) : "";
 }
 
+// The assign button: shows who it's assigned to (avatar + first name) or an
+// "Assign" button; clicking opens the picker (people list, search, add by email).
+function assignButton({ name, email }, onPick, label = "Assign") {
+  const has = !!name;
+  const btn = h("button", { type: "button", class: `assign-btn${has ? " assigned" : ""}`, "aria-haspopup": "dialog", "data-tip": has ? `Assigned to ${personLabel({ name, email })} — click to change` : "Assign this to someone" });
+  btn.innerHTML = has
+    ? `<span class="assign-avatar">${escapeHtml(initials(name))}</span><span class="assign-name">${escapeHtml(name)}</span>${CHEVRON}`
+    : `${ASSIGN_ICON}<span>${escapeHtml(label)}</span>${CHEVRON}`;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openAssignPicker(btn, { current: has ? { name, email } : null, onPick });
+  });
+  return btn;
+}
+
 function renderAssignee(elId, c) {
   const wrap = h("div", { class: "cc-assignee" });
-  const show = () => {
-    wrap.innerHTML = "";
-    const tip = c.assignee ? `Assigned to ${currentAssigneeLabel(c)} — click to change` : "Who should act on this";
-    const btn = h("button", { class: `cc-assignee-btn${c.assignee ? "" : " empty"}`, "data-tip": tip }, c.assignee ? `→ ${c.assignee}` : "Assign…");
-    btn.addEventListener("click", edit);
-    wrap.appendChild(btn);
-  };
-  const edit = () => {
-    wrap.innerHTML = "";
-    const { input, datalist } = personInput(`assignee-people-${c.id}`, currentAssigneeLabel(c), "Name or email", "cc-assignee-input");
-    let finished = false;
-    // Returns false (and leaves the box open) if the text isn't a known person or an email.
-    const commit = () => {
-      if (finished) return true;
-      if (input.value.trim() === currentAssigneeLabel(c)) { finished = true; show(); return true; }
-      const person = resolvePerson(input.value, people());
-      if (!person) {
-        input.classList.add("invalid");
-        return false;
-      }
-      finished = true;
-      store.updateComment(elId, c.id, { assignee: person.name ? person : null });
-      return true;
-    };
-    input.addEventListener("input", () => input.classList.remove("invalid"));
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (!commit()) showToast("Pick someone from the list or type their email", "error", 3000);
-      }
-      if (e.key === "Escape") { finished = true; show(); }
-    });
-    input.addEventListener("blur", () => {
-      if (!commit()) {
-        finished = true;
-        show();
-        showToast("Not assigned — pick someone from the list or type their email", "error", 3500);
-      }
-    });
-    wrap.appendChild(input);
-    wrap.appendChild(datalist);
-    input.focus();
-    input.select();
-  };
-  show();
+  wrap.appendChild(
+    assignButton({ name: c.assignee, email: c.assigneeEmail }, (person, { notify }) => {
+      const same = person && c.assigneeEmail && person.email.toLowerCase() === c.assigneeEmail.toLowerCase();
+      if (same) return;
+      store.updateComment(elId, c.id, { assignee: person });
+      if (person && notify) emailAssignee({ person, elId, commentText: c.text, type: typeLabel(c.type) });
+    })
+  );
   return wrap;
 }
 
@@ -402,7 +377,7 @@ function renderReplyBox(elId, c) {
 
 function renderComposer(elId, where) {
   const key = `new:${where}:${elId}`;
-  const draft = drafts.get(key) || { text: "", type: DEFAULT_COMMENT_TYPE, assignee: "" };
+  const draft = drafts.get(key) || { text: "", type: DEFAULT_COMMENT_TYPE, assignee: null };
   const wrap = h("div", { class: "comment-composer" });
 
   const ta = h("textarea", { placeholder: "Add a comment… type @ to mention someone", rows: "3", "data-draft": key });
@@ -410,32 +385,37 @@ function renderComposer(elId, where) {
   attachMentionAutocomplete(ta, people);
 
   const typeSel = select(COMMENT_TYPES.map((t) => ({ v: t.id, l: t.label })).concat([{ v: "", l: "No type" }]), draft.type, (v) => { draft.type = v; drafts.set(key, draft); }, "cm-select");
-  const { input: assignee, datalist } = personInput(`composer-people-${where}-${elId}`, draft.assignee, "Assign to (name or email)", "cm-assignee-input");
-  assignee.setAttribute("data-draft", `${key}:assignee`);
   const error = h("div", { class: "cm-error" });
   const btn = h("button", { class: "btn primary sm" }, "Comment");
+  // The chosen assignee ({ name, email }) lives on the draft so it survives re-renders.
+  const assigneeHost = h("div", { class: "cm-assignee-host" });
+  let notifyOnPost = false;
+  const drawAssign = () => {
+    assigneeHost.innerHTML = "";
+    assigneeHost.appendChild(assignButton(draft.assignee || { name: "", email: "" }, (person, { notify }) => {
+      draft.assignee = person;
+      notifyOnPost = !!(person && notify);
+      drafts.set(key, draft);
+      drawAssign();
+    }, "Assign to…"));
+  };
+  drawAssign();
 
-  const sync = () => { draft.text = ta.value; draft.assignee = assignee.value; drafts.set(key, draft); error.textContent = ""; assignee.classList.remove("invalid"); };
+  const sync = () => { draft.text = ta.value; drafts.set(key, draft); error.textContent = ""; };
   ta.addEventListener("input", sync);
-  assignee.addEventListener("input", sync);
 
   const submit = () => {
     if (!ta.value.trim()) { ta.focus(); return; }
-    const person = resolvePerson(assignee.value, people());
-    if (!person) {
-      assignee.classList.add("invalid");
-      error.textContent = "Pick someone from the list or type their email";
-      assignee.focus();
-      return;
-    }
+    const person = draft.assignee && draft.assignee.name ? draft.assignee : null;
     drafts.delete(key);
-    store.addComment(elId, { text: ta.value, type: draft.type, assignee: person.name ? person : null });
+    const created = store.addComment(elId, { text: ta.value, type: draft.type, assignee: person });
+    if (created && person && notifyOnPost) emailAssignee({ person, elId, commentText: created.text, type: typeLabel(created.type) });
   };
   btn.addEventListener("click", submit);
   ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); } });
 
   wrap.appendChild(ta);
-  wrap.appendChild(h("div", { class: "cm-composer-row" }, [typeSel, assignee, datalist]));
+  wrap.appendChild(h("div", { class: "cm-composer-row" }, [typeSel, assigneeHost]));
   wrap.appendChild(error);
   wrap.appendChild(h("div", { class: "cm-composer-row end" }, [h("span", { class: "cc-hint" }, "Ctrl+Enter to post"), btn]));
   return wrap;
